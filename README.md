@@ -74,8 +74,18 @@ pip install -r requirements.txt
 python -c "from src.utils.seeds import set_seed, load_config; set_seed(); print(load_config())"
 ```
 
-En **Google Colab**, no reinstales `torch`/`torchvision` (ya vienen). Monta tu
-Google Drive para persistir `data/processed/` entre sesiones.
+En **Google Colab** (recomendado para descargar y ejecutar, con guardado en Drive),
+abre `notebooks/00_setup_colab.ipynb` y sigue los pasos: monta Drive, clona el repo,
+instala dependencias y deja datos/figuras/modelos en una carpeta persistente de Drive.
+No reinstales `torch`/`torchvision` (ya vienen).
+
+### Rutas y workspace
+
+Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
+
+- **Local:** `workspace_root: null` en `config.yaml` → todo vive en el proyecto.
+- **Colab:** la variable de entorno `TFM_WORKSPACE` (la fija el notebook de setup)
+  redirige todo a Google Drive. El código no cambia entre ambos entornos.
 
 ## Datos
 
@@ -87,8 +97,10 @@ Google Drive para persistir `data/processed/` entre sesiones.
 
 ## Hoja de ruta por fases
 
-- [~] **Fase 0** — Preparación: repo, entorno, alcance y caso de negocio. *(en curso)*
-- [ ] **Fase 1** — Datos y EDA: descarga, extracción facial, análisis descriptivo.
+- [x] **Fase 0** — Preparación: repo, entorno, alcance y caso de negocio.
+- [~] **Fase 1** — Datos y EDA: descarga, extracción facial, análisis descriptivo.
+      Código listo (`src/data/`, `notebooks/01_eda.ipynb`); pendiente de ejecutar
+      sobre los datos al recibir el acceso a FF++.
 - [ ] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
 - [ ] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
 - [ ] **Fase 4** — Productivización: app Gradio end-to-end.

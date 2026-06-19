@@ -9,10 +9,13 @@ project:
   seed: 42                         # semilla global (reproducibilidad)
 
 paths:
-  raw_data: "data/raw"             # vídeos originales descargados (FF++ c23)
-  interim_data: "data/interim"     # rostros recortados por frame
-  processed_data: "data/processed" # embeddings cacheados (.npy/.pt)
-  figures: "reports/figures"       # gráficas del EDA y resultados
+  # Raíz de SALIDAS (datos, figuras, modelos). Subrutas estándar:
+  #   data/raw, data/interim, data/processed, reports/figures, models
+  # - En LOCAL: déjalo en null -> se usa la carpeta del proyecto.
+  # - En COLAB: la variable de entorno TFM_WORKSPACE (Google Drive) tiene
+  #   prioridad sobre este valor. Ver notebooks/00_setup_colab.ipynb.
+  # Las rutas se resuelven con src/utils/paths.py -> get_paths().
+  workspace_root: null
 
 dataset:
   name: "FaceForensics++"

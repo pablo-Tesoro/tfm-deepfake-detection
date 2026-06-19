@@ -1,0 +1,62 @@
+# ==========================================================================
+# config.yaml - Configuración central del TFM
+# Centralizar aquí todos los parámetros facilita la reproducibilidad y evita
+# "números mágicos" repartidos por el código. Se carga con pyyaml.
+# ==========================================================================
+
+project:
+  name: "TFM - Deteccion de Deepfakes"
+  seed: 42                         # semilla global (reproducibilidad)
+
+paths:
+  raw_data: "data/raw"             # vídeos originales descargados (FF++ c23)
+  interim_data: "data/interim"     # rostros recortados por frame
+  processed_data: "data/processed" # embeddings cacheados (.npy/.pt)
+  figures: "reports/figures"       # gráficas del EDA y resultados
+
+dataset:
+  name: "FaceForensics++"
+  compression: "c23"               # raw | c23 | c40  -> usamos c23 (HQ, manejable)
+  manipulation_methods:
+    - "Deepfakes"
+    - "Face2Face"
+    - "FaceSwap"
+    - "NeuralTextures"
+  # Split oficial de FF++ (para comparabilidad con la literatura):
+  split:
+    train: 720
+    val: 140
+    test: 140
+  # Experimento CROSS-MANIPULATION (gran diferenciador del TFM):
+  # se entrena con 3 métodos y se evalúa la generalización sobre el 4º no visto.
+  cross_manipulation:
+    train_methods: ["Deepfakes", "Face2Face", "FaceSwap"]
+    holdout_method: "NeuralTextures"
+
+face_extraction:
+  detector: "MTCNN"                # facenet-pytorch
+  image_size: 224                  # tamaño del recorte facial (px)
+  margin: 20                       # margen alrededor del rostro
+  frames_per_video: 16             # nº de frames muestreados por vídeo
+
+model:
+  backbone: "efficientnet_b0"      # timm; alternativa: "resnet50"
+  freeze_backbone: true            # congelado -> embeddings cacheables (barato)
+  temporal: "lstm"                 # lstm | gru
+  hidden_size: 256
+  num_layers: 1
+  dropout: 0.3
+
+training:
+  batch_size: 16
+  learning_rate: 0.0001
+  epochs: 20
+  num_workers: 2
+
+# Punto de operación orientado a NEGOCIO:
+# en KYC/onboarding, un falso negativo (dejar pasar un deepfake) es muy costoso,
+# por lo que el umbral de decisión se ajustará para priorizar el recall de "fake",
+# no simplemente para maximizar el F1. Se define tras analizar la curva ROC.
+business:
+  use_case: "videoidentificacion_onboarding_bancario"
+  decision_threshold: null         # se fija en la Fase 3 según coste FP/FN

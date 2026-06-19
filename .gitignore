@@ -1,0 +1,59 @@
+# ==========================================================================
+# .gitignore - TFM Detección de Deepfakes
+# CRÍTICO: nunca subir vídeos, rostros recortados ni embeddings al repo.
+# Son archivos enormes y FaceForensics++ tiene términos de uso que NO
+# permiten su redistribución. El repo guarda CÓDIGO, no DATOS.
+# ==========================================================================
+
+# --- Datos (jamás versionar) ---
+data/raw/*
+data/interim/*
+data/processed/*
+# ...pero conservar la estructura de carpetas en git:
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# --- Archivos multimedia y tensores pesados ---
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.npy
+*.npz
+
+# --- Modelos y checkpoints ---
+*.pt
+*.pth
+*.h5
+*.ckpt
+models/
+checkpoints/
+
+# --- Reproducibilidad: lock generado, no versionar el intermedio ---
+# (requirements-lock.txt SÍ se versiona para la entrega)
+
+# --- Notebooks: checkpoints automáticos ---
+.ipynb_checkpoints/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# --- Credenciales / secretos (nunca subir) ---
+*.env
+.env
+credentials.json
+*.key
+
+# --- Sistema operativo / IDE ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

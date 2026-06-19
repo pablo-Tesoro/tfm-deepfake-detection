@@ -1,0 +1,49 @@
+# ==========================================================================
+# TFM - Detección de Deepfakes (perfil Data Scientist)
+# Stack basado en PyTorch.
+#
+# Instalación recomendada (entorno virtual):
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# NOTA sobre reproducibilidad: durante el desarrollo dejamos las versiones
+# sin fijar para evitar conflictos (especialmente en Colab, que trae su
+# propia versión de torch). Antes de la ENTREGA final, congela las versiones
+# exactas con:   pip freeze > requirements-lock.txt
+# y entrega ese fichero como anexo. La guía valora la reproducibilidad.
+# ==========================================================================
+
+# --- Núcleo de análisis de datos ---
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+pyyaml
+tqdm
+
+# --- Deep Learning (PyTorch) ---
+# En Colab, torch y torchvision ya vienen instalados: NO los reinstales allí.
+torch
+torchvision
+
+# --- Detección y recorte facial ---
+facenet-pytorch        # MTCNN (detector de rostros)
+
+# --- Backbones preentrenados (Transfer Learning) ---
+timm                   # EfficientNet, ResNet, etc. con pesos preentrenados
+
+# --- Procesamiento de vídeo e imagen ---
+opencv-python
+Pillow
+
+# --- Explicabilidad (XAI) ---
+grad-cam               # pytorch-grad-cam: Grad-CAM y variantes
+
+# --- Productivización (interfaz web) ---
+gradio
+# streamlit            # alternativa a Gradio; descomenta si la prefieres
+
+# --- Entorno de notebooks ---
+jupyter
+ipykernel

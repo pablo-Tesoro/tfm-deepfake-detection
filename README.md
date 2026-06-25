@@ -101,7 +101,9 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 - [~] **Fase 1** — Datos y EDA: descarga, extracción facial, análisis descriptivo.
       Código listo (`src/data/`, `notebooks/01_eda.ipynb`); pendiente de ejecutar
       sobre los datos al recibir el acceso a FF++.
-- [ ] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
+- [~] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
+      Código y notebook listos (`src/features/`, `src/models/`, `src/training/`,
+      `src/evaluation/`, `notebooks/02_modeling.ipynb`); pendiente de ejecutar con datos.
 - [ ] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
 - [ ] **Fase 4** — Productivización: app Gradio end-to-end.
 - [ ] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.

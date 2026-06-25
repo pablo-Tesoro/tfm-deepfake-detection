@@ -58,17 +58,28 @@ def ensure_splits(paths) -> None:
 
 
 def run_download(paths, cfg, n_videos: int, ff_script: str) -> None:
-    """Ejecuta el script oficial de descarga de FF++ si está disponible."""
+    """Ejecuta el script oficial de FF++ SOLO para las categorías que usamos.
+
+    En lugar de '-d all' (que baja 8 categorías, 3 de ellas inútiles para este
+    proyecto), se llama una vez por cada dataset necesario: los vídeos reales
+    ('original') y los 4 métodos del config. Se alimenta el prompt de términos
+    de uso del script con una línea para que no bloquee en automático.
+    """
     script = PROJECT_ROOT / ff_script
     if not script.exists():
         print(f"[descarga omitida] No encuentro {script}. "
               f"Coloca el script de FaceForensics++ ahí para descargar automáticamente.")
         return
-    cmd = [sys.executable, str(script), str(paths["raw"]),
-           "-d", "all", "-c", cfg["dataset"]["compression"],
-           "-t", "videos", "-n", str(n_videos), "--server", "EU2"]
-    print("Descargando:", " ".join(cmd))
-    subprocess.run(cmd, check=False)
+
+    datasets = ["original"] + list(cfg["dataset"]["manipulation_methods"])
+    print(f"Descargando solo las categorías usadas: {datasets}")
+    for ds in datasets:
+        cmd = [sys.executable, str(script), str(paths["raw"]),
+               "-d", ds, "-c", cfg["dataset"]["compression"],
+               "-t", "videos", "-n", str(n_videos), "--server", "EU2"]
+        print("  ->", ds)
+        # input='\n' acepta el prompt de términos de uso (TOS) sin intervención.
+        subprocess.run(cmd, input="\n", text=True, check=False)
 
 
 def _videos_pending_faces(inventory, paths):

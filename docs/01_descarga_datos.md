@@ -14,22 +14,22 @@
 
 El dataset completo es enorme. Para un TFM con recursos limitados, descarga un
 **subconjunto** de los vídeos en compresión **c23** (calidad alta pero manejable).
-El script oficial permite limitar el número de vídeos.
+
+Importante: **no uses `-d all`**, porque baja 8 categorías y 3 de ellas no las usa
+este proyecto (`DeepFakeDetection_original`/actors, `DeepFakeDetection` y
+`FaceShifter`). Descarga solo las cinco que usamos llamando al script una vez por
+categoría:
 
 ```bash
-# Coloca el script descargado en la raíz del proyecto y ejecútalo apuntando a data/raw.
-# -d all   -> originales + los 4 métodos de manipulación
-# -c c23    -> compresión media (la que usamos)
-# -t videos -> solo vídeos (no máscaras ni modelos)
-# -n 100    -> número de vídeos (subconjunto; ajusta según tu cómputo)
-# --server EU2 -> servidor europeo (recomendado actualmente)
-
-python download-FaceForensics.py ./data/raw -d all -c c23 -t videos -n 100 --server EU2
+# original (reales) + los 4 métodos. -n = nº de vídeos por categoría (subconjunto).
+for D in original Deepfakes Face2Face FaceSwap NeuralTextures; do
+  python download-FaceForensics.py ./data/raw -d $D -c c23 -t videos -n 100 --server EU2
+done
 ```
 
-> Verifica los nombres exactos de los parámetros con `python download-FaceForensics.py --help`,
-> ya que pueden variar ligeramente entre versiones del script. El parámetro del
-> número de vídeos puede aparecer como `-n` o `--num_videos`.
+> El script pide aceptar los términos de uso (pulsar una tecla). En el orquestador
+> (`run_all.py`) esto se resuelve automáticamente; si lo lanzas a mano, pulsa Intro.
+> Verifica los parámetros con `python download-FaceForensics.py --help`.
 
 ## 3. Descargar los splits oficiales
 

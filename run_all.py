@@ -72,11 +72,14 @@ def run_download(paths, cfg, n_videos: int, ff_script: str) -> None:
         return
 
     datasets = ["original"] + list(cfg["dataset"]["manipulation_methods"])
-    print(f"Descargando solo las categorías usadas: {datasets}")
+    alcance = "TODOS los vídeos" if not n_videos else f"{n_videos} por categoría"
+    print(f"Descargando solo las categorías usadas ({alcance}): {datasets}")
     for ds in datasets:
         cmd = [sys.executable, str(script), str(paths["raw"]),
                "-d", ds, "-c", cfg["dataset"]["compression"],
-               "-t", "videos", "-n", str(n_videos), "--server", "EU2"]
+               "-t", "videos", "--server", "EU2"]
+        if n_videos:                       # None o 0 -> sin límite (todo el dataset)
+            cmd += ["-n", str(n_videos)]
         print("  ->", ds)
         # input='\n' acepta el prompt de términos de uso (TOS) sin intervención.
         subprocess.run(cmd, input="\n", text=True, check=False)

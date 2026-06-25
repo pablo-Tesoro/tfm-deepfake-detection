@@ -86,53 +86,102 @@ def split_by_official(
     }
 
 
+def split_stratified(
+    manifest: pd.DataFrame,
+    val_frac: float = 0.15,
+    test_frac: float = 0.15,
+    seed: int = 42,
+) -> Dict[str, pd.DataFrame]:
+    """Reparto ESTRATIFICADO por clase sobre los vídeos disponibles.
+
+    Garantiza que train/val/test contengan ambas clases. Es la opción adecuada
+    para subconjuntos pequeños, donde el split oficial puede dejar conjuntos
+    vacíos (p. ej. ningún vídeo de test).
+    """
+    from sklearn.model_selection import train_test_split
+
+    df = manifest[manifest["n_frames"] > 0].reset_index(drop=True)
+    train_df, tmp_df = train_test_split(
+        df, test_size=val_frac + test_frac, stratify=df["label"], random_state=seed
+    )
+    rel_test = test_frac / (val_frac + test_frac)
+    val_df, test_df = train_test_split(
+        tmp_df, test_size=rel_test, stratify=tmp_df["label"], random_state=seed
+    )
+    return {
+        "train": train_df.reset_index(drop=True),
+        "val": val_df.reset_index(drop=True),
+        "test": test_df.reset_index(drop=True),
+    }
+
+
+def splits_usable(parts: Dict[str, pd.DataFrame], min_per_split: int = 2) -> bool:
+    """True si los tres conjuntos tienen suficientes vídeos y ambas clases."""
+    for name in ("train", "val", "test"):
+        part = parts.get(name)
+        if part is None or len(part) < min_per_split or part["label"].nunique() < 2:
+            return False
+    return True
+
+
+def get_splits(
+    manifest: pd.DataFrame,
+    prefer_official: bool = True,
+    min_per_split: int = 2,
+    **kwargs,
+) -> Dict[str, pd.DataFrame]:
+    """Devuelve el split oficial si es utilizable; si no, uno estratificado.
+
+    Pensado para que el notebook funcione tanto con el dataset completo (split
+    oficial, comparable con la literatura) como con subconjuntos pequeños.
+    """
+    if prefer_official and "split" in manifest.columns:
+        official = split_by_official(manifest)
+        if splits_usable(official, min_per_split):
+            print("Reparto: split OFICIAL de FaceForensics++.")
+            return official
+        print("Aviso: el split oficial deja conjuntos vacíos o insuficientes en "
+              "este subconjunto -> se usa un reparto ESTRATIFICADO.")
+    return split_stratified(manifest, **kwargs)
+
+
 def split_cross_manipulation(
     manifest: pd.DataFrame,
     train_methods: Sequence[str],
     holdout_method: str,
+    val_frac: float = 0.15,
+    test_frac: float = 0.15,
+    seed: int = 42,
 ) -> Dict[str, pd.DataFrame]:
     """Prepara el experimento de generalización a un método NO visto.
 
-    Entrenamiento/validación: vídeos reales + fakes de `train_methods`.
-    Test: vídeos reales + fakes del `holdout_method` (no visto en entrenamiento).
-    Se respeta el split oficial para repartir los vídeos reales y, en train,
-    se usa el split 'val' para validación.
+    Invariante clave: el `holdout_method` NO aparece en train ni en val; solo en
+    test. Los vídeos reales se reparten de forma estratificada entre los tres
+    conjuntos, de modo que el experimento funciona también con subconjuntos
+    pequeños (sin depender de que el split oficial cubra cada conjunto).
 
     Returns:
         Diccionario con 'train', 'val', 'test'.
     """
-    reals = manifest[manifest["label"] == 0]
-    fakes = manifest[manifest["label"] == 1]
+    from sklearn.model_selection import train_test_split
 
-    train_fakes = fakes[fakes["method"].isin(train_methods)]
-    holdout_fakes = fakes[fakes["method"] == holdout_method]
+    m = manifest[manifest["n_frames"] > 0]
+    reals = m[m["label"] == 0]
+    train_fakes = m[(m["label"] == 1) & (m["method"].isin(train_methods))]
+    holdout_fakes = m[(m["label"] == 1) & (m["method"] == holdout_method)]
 
-    has_split = "split" in manifest.columns
+    # Reales -> train/val/test
+    r_train, r_tmp = train_test_split(reals, test_size=val_frac + test_frac, random_state=seed)
+    rel_test = test_frac / (val_frac + test_frac)
+    r_val, r_test = train_test_split(r_tmp, test_size=rel_test, random_state=seed)
 
-    if has_split:
-        train = pd.concat([
-            reals[reals["split"] == "train"],
-            train_fakes[train_fakes["split"] == "train"],
-        ])
-        val = pd.concat([
-            reals[reals["split"] == "val"],
-            train_fakes[train_fakes["split"] == "val"],
-        ])
-        test = pd.concat([
-            reals[reals["split"] == "test"],
-            holdout_fakes[holdout_fakes["split"] == "test"],
-        ])
-    else:
-        # Sin split oficial: reparto simple (no recomendado para la entrega).
-        train = pd.concat([reals, train_fakes])
-        val = train.sample(frac=0.15, random_state=42)
-        train = train.drop(val.index)
-        test = pd.concat([reals, holdout_fakes])
+    # Fakes de métodos de entrenamiento -> train/val (test usa SOLO el holdout)
+    f_train, f_val = train_test_split(train_fakes, test_size=val_frac, random_state=seed)
 
     return {
-        "train": train.reset_index(drop=True),
-        "val": val.reset_index(drop=True),
-        "test": test.reset_index(drop=True),
+        "train": pd.concat([r_train, f_train]).reset_index(drop=True),
+        "val": pd.concat([r_val, f_val]).reset_index(drop=True),
+        "test": pd.concat([r_test, holdout_fakes]).reset_index(drop=True),
     }
 
 

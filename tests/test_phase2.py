@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 
 from src.data.sequence_dataset import (
     SequenceDataset, collate_sequences, split_cross_manipulation, class_weights,
+    split_stratified, splits_usable, get_splits,
 )
 from src.models.baseline import FrameMeanBaseline
 from src.models.hybrid import CNNLSTM
@@ -133,11 +134,30 @@ def test_business_metrics():
           f"{cheap_fn['threshold']:.2f} -> {costly_fn['threshold']:.2f})")
 
 
+def test_stratified_and_auto_splits():
+    with tempfile.TemporaryDirectory() as d:
+        manifest = _make_synthetic_manifest(Path(d))
+
+        # Estratificado: los tres conjuntos con ambas clases
+        strat = split_stratified(manifest, val_frac=0.15, test_frac=0.15)
+        assert splits_usable(strat)
+        for name in ("train", "val", "test"):
+            assert strat[name]["label"].nunique() == 2
+
+        # get_splits con split oficial degenerado (todo a train) -> cae a estratificado
+        bad = manifest.copy()
+        bad["split"] = "train"          # test y val vacíos en el "oficial"
+        parts = get_splits(bad)
+        assert splits_usable(parts), "get_splits debería caer a estratificado"
+        print("  [OK] split_stratified + get_splits (fallback automático)")
+
+
 if __name__ == "__main__":
     torch.manual_seed(0)
     print("Ejecutando pruebas de la Fase 2 (torch + sklearn):")
     test_dataset_and_collate()
     test_cross_manipulation_split()
+    test_stratified_and_auto_splits()
     test_models_forward()
     test_training_reduces_and_learns()
     test_business_metrics()

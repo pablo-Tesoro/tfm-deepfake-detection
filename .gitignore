@@ -27,7 +27,7 @@ data/processed/*
 *.pth
 *.h5
 *.ckpt
-models/
+/models/
 checkpoints/
 
 # --- Reproducibilidad: lock generado, no versionar el intermedio ---

@@ -40,7 +40,7 @@ estimar si el rostro ha sido manipulado sintéticamente (suplantación de identi
 > Alternativas consideradas (mencionar brevemente en la memoria, sección de
 > contexto): moderación de contenido en redes sociales, verificación periodística
 > de vídeos, peritaje en seguros. Se elige banca por la claridad del coste y la
-> relevancia regulatoria. `[Confirma si prefieres otro caso ancla.]`
+> relevancia regulatoria.
 
 ## 3. Objetivos
 
@@ -87,11 +87,6 @@ técnico.
 - **Licencia y ética:** uso académico; no redistribuir; citar a Rössler et al.
   (2019). Considerar en la memoria la **privacidad** de las personas grabadas y el
   **uso dual** de la tecnología (detección vs. evasión).
-
-> Nota sobre "datos sintéticos": la guía desaconseja los datos sintéticos porque
-> sus conclusiones suelen ser limitadas. **Aclarar en la memoria** que aquí el
-> contenido manipulado es sintético, pero el dataset es un *benchmark* real y
-> establecido de un fenómeno real; no es el caso que la guía quiere evitar.
 
 ## 6. Métricas de éxito
 

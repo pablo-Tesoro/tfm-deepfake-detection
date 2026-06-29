@@ -4,7 +4,7 @@
 > mediante una arquitectura híbrida espacio-temporal (CNN + LSTM) y técnicas de
 > explicabilidad (Grad-CAM), con una herramienta web de demostración.
 
-Máster en Ciencia de Datos e Inteligencia Artificial — UCM.
+Máster en Big Data, Ciencia de Datos e Inteligencia Artificial — UCM.
 
 ---
 
@@ -104,7 +104,7 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 - [~] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
       Código y notebook listos (`src/features/`, `src/models/`, `src/training/`,
       `src/evaluation/`, `notebooks/02_modeling.ipynb`); pendiente de ejecutar con datos.
-- [ ] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
+- [x] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
 - [ ] **Fase 4** — Productivización: app Gradio end-to-end.
 - [ ] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.
 
@@ -116,5 +116,4 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 
 ## Autor
 
-[Tu Nombre y dos apellidos] — el ZIP de entrega se nombrará
-`Nombre_Apellido1_Apellido2_TFM_Deepfakes.zip` (formato pedido por la guía).
+Pablo Tesoro García.

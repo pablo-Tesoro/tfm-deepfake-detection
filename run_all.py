@@ -86,13 +86,30 @@ def run_download(paths, cfg, n_videos: int, ff_script: str) -> None:
 
 
 def _videos_pending_faces(inventory, paths):
-    """Filtra el inventario a los vídeos que aún no tienen rostros extraídos."""
-    done_mask = inventory.apply(
-        lambda r: (paths["interim"] / r["method"]).exists()
-        and any((paths["interim"] / r["method"]).glob(f"{r['video_id']}_frame*.jpg")),
-        axis=1,
-    )
-    return inventory[~done_mask]
+    """Filtra el inventario a los vídeos que aún no tienen rostros extraídos.
+
+    IMPORTANTE (rendimiento en Google Drive): escanea cada carpeta de método UNA
+    sola vez y guarda en memoria los vídeos ya procesados. Antes se hacía un glob
+    por vídeo (miles de escaneos del mismo directorio enorme sobre Drive vía FUSE),
+    lo que tardaba horas. Ahora son ~1 lectura por método.
+    """
+    interim = Path(paths["interim"])
+    done = set()
+    for method in inventory["method"].unique():
+        d = interim / method
+        if not d.exists():
+            continue
+        try:
+            names = os.listdir(d)          # una única lectura del directorio
+        except OSError:
+            names = []
+        for name in names:
+            if "_frame" in name and name.endswith(".jpg"):
+                done.add(method + "|" + name.split("_frame")[0])
+        print(f"  {method}: {sum(1 for k in done if k.startswith(method + '|'))} vídeos ya procesados")
+
+    keys = inventory["method"] + "|" + inventory["video_id"]
+    return inventory[~keys.isin(done)]
 
 
 def extract_faces(cfg, paths, inventory) -> None:

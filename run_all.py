@@ -224,6 +224,7 @@ def run_pipeline(
     make_figs: bool = True,
     launch: bool = True,
     share: bool = True,
+    fused: bool = True,
 ):
     """Ejecuta el proyecto completo y (opcionalmente) lanza la app.
 
@@ -253,13 +254,26 @@ def run_pipeline(
     print(f"{len(inv)} vídeos ({int((inv['label']==0).sum())} reales / "
           f"{int((inv['label']==1).sum())} fakes).")
 
-    _banner(3, TOTAL, "Extracción facial")
-    extract_faces(cfg, paths, inv)
+    if fused:
+        # Rápido en Drive: vídeo -> embedding en un paso, sin escribir frames.
+        _banner(3, TOTAL, "Extracción + embeddings FUSIONADOS (directo a .npy)")
+        from src.features.embeddings import embed_videos_direct
+        manifest = embed_videos_direct(
+            inv, paths["processed"], backbone=cfg["model"]["backbone"],
+            num_frames=cfg["face_extraction"]["frames_per_video"],
+            image_size=cfg["face_extraction"]["image_size"],
+            margin=cfg["face_extraction"]["margin"])
+        _banner(4, TOTAL, "Embeddings")
+        print("(fusionado con el paso 3: no se han escrito frames en disco)")
+    else:
+        # Dos pasos (recomendable solo en disco local, no en Drive).
+        _banner(3, TOTAL, "Extracción facial")
+        extract_faces(cfg, paths, inv)
+        _banner(4, TOTAL, "Embeddings (CNN congelada)")
+        manifest = build_or_load_embeddings(cfg, paths, inv)
 
-    _banner(4, TOTAL, "Embeddings (CNN congelada)")
-    manifest = build_or_load_embeddings(cfg, paths, inv)
     if manifest.empty:
-        print("No se generaron embeddings (¿se extrajeron rostros?).")
+        print("No se generaron embeddings (¿hay vídeos y se detectan rostros?).")
         return None
 
     _banner(5, TOTAL, "Entrenamiento (baseline + híbrido)")

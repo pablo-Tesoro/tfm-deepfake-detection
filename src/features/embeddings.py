@@ -92,6 +92,80 @@ def embed_video(
     return np.concatenate(embeddings, axis=0).astype("float32")
 
 
+def embed_videos_direct(
+    inventory: pd.DataFrame,
+    processed_root: str | Path,
+    backbone: str = "efficientnet_b0",
+    num_frames: int = 16,
+    image_size: int = 224,
+    margin: int = 20,
+    batch_size: int = 32,
+    overwrite: bool = False,
+) -> pd.DataFrame:
+    """Pipeline FUSIONADO: vídeo -> embedding, sin escribir frames en disco.
+
+    Por cada vídeo: muestrea frames, detecta el rostro (MTCNN) y calcula el
+    embedding, TODO en memoria; solo guarda un .npy por vídeo. Evita las decenas
+    de miles de escrituras/lecturas de imágenes pequeñas, que son el gran cuello
+    de botella en Google Drive.
+
+    Es idempotente: salta los vídeos cuyo .npy ya existe (overwrite=False).
+
+    Requiere PyTorch + timm + facenet-pytorch.
+    """
+    import torch
+    from PIL import Image
+
+    from src.data.sampling import sample_frames
+    from src.data.face_extraction import build_mtcnn
+
+    processed_root = Path(processed_root)
+    model, transform, embed_dim, device = build_backbone(backbone)
+    mtcnn = build_mtcnn(image_size=image_size, margin=margin, device=device)
+    print(f"Fusionado | backbone={backbone} (dim={embed_dim}) | device={device}")
+
+    records = []
+    for row in tqdm(inventory.itertuples(index=False), total=len(inventory),
+                    desc="Video -> embedding"):
+        out_dir = processed_root / row.method
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{row.video_id}.npy"
+
+        if out_path.exists() and not overwrite:
+            emb = np.load(out_path)
+        else:
+            frames = sample_frames(row.filepath, num_frames=num_frames, as_rgb=True)
+            faces = []
+            for fr in frames:
+                ft = mtcnn(Image.fromarray(fr))
+                if ft is None:
+                    continue
+                img = ft.permute(1, 2, 0).clamp(0, 255).byte().cpu().numpy()
+                faces.append(transform(Image.fromarray(img)))
+            if not faces:
+                continue
+            with torch.no_grad():
+                emb = model(torch.stack(faces).to(device)).cpu().numpy().astype("float32")
+            np.save(out_path, emb)
+
+        if emb.shape[0] == 0:
+            continue
+        rec = {
+            "video_id": row.video_id, "method": row.method, "label": int(row.label),
+            "n_frames": int(emb.shape[0]), "embed_dim": int(emb.shape[1]),
+            "embedding_path": str(out_path),
+        }
+        if hasattr(row, "split"):
+            rec["split"] = getattr(row, "split")
+        records.append(rec)
+
+    manifest = pd.DataFrame(records)
+    manifest_path = processed_root / "embeddings_manifest.csv"
+    manifest.to_csv(manifest_path, index=False)
+    print(f"Manifiesto: {manifest_path} ({len(manifest)} vídeos).")
+    return manifest
+
+
 def build_embeddings(
     inventory: pd.DataFrame,
     interim_root: str | Path,

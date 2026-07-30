@@ -3,17 +3,20 @@ run_all.py — Orquestador de extremo a extremo.
 
 Ejecuta TODO el proyecto en una sola llamada y lanza la app, devolviendo la URL:
 
-    splits -> (descarga opcional) -> extracción facial -> embeddings ->
-    entrenamiento (baseline + híbrido) -> figuras -> app (enlace público).
+    splits -> (descarga opcional) -> vídeo->embeddings (fusionado, 1-2 backbones)
+    -> entrenamiento (baseline + híbrido) -> evaluación y figuras
+    -> experimentos (curva de aprendizaje, backbones, por método) -> app.
 
-Pensado para llamarse desde una única celda de Colab DESPUÉS de montar Drive y
-clonar el repo (ver notebooks/RUN_ALL.ipynb). Cada paso reutiliza los módulos ya
-probados de `src/` y es idempotente: si algo ya está hecho (rostros, embeddings,
-modelos), no lo repite.
+Optimizado para Google Drive: no escribe frames intermedios (vídeo -> .npy
+directo), detección facial por lotes, un solo escaneo por directorio,
+reutilización de manifiestos y caché en RAM de embeddings durante el
+entrenamiento. Cada paso es idempotente: lo ya hecho no se repite.
 
     from run_all import run_pipeline
-    run_pipeline()                       # usa lo ya descargado/entrenado y lanza la app
-    run_pipeline(download=True, n_videos=150, retrain=True)   # todo desde cero
+    run_pipeline()                                   # reutiliza lo ya hecho
+    run_pipeline(download=True, n_videos=None, retrain=True)   # todo desde cero
+    run_pipeline(experiments=False)                  # sin los 3 experimentos
+    run_pipeline(compare_backbone=None)              # sin la 2ª pasada (ResNet)
 """
 from __future__ import annotations
 
@@ -83,52 +86,6 @@ def run_download(paths, cfg, n_videos: int, ff_script: str) -> None:
         print("  ->", ds)
         # input='\n' acepta el prompt de términos de uso (TOS) sin intervención.
         subprocess.run(cmd, input="\n", text=True, check=False)
-
-
-def _videos_pending_faces(inventory, paths):
-    """Filtra el inventario a los vídeos que aún no tienen rostros extraídos.
-
-    IMPORTANTE (rendimiento en Google Drive): escanea cada carpeta de método UNA
-    sola vez y guarda en memoria los vídeos ya procesados. Antes se hacía un glob
-    por vídeo (miles de escaneos del mismo directorio enorme sobre Drive vía FUSE),
-    lo que tardaba horas. Ahora son ~1 lectura por método.
-    """
-    interim = Path(paths["interim"])
-    done = set()
-    for method in inventory["method"].unique():
-        d = interim / method
-        if not d.exists():
-            continue
-        try:
-            names = os.listdir(d)          # una única lectura del directorio
-        except OSError:
-            names = []
-        for name in names:
-            if "_frame" in name and name.endswith(".jpg"):
-                done.add(method + "|" + name.split("_frame")[0])
-        print(f"  {method}: {sum(1 for k in done if k.startswith(method + '|'))} vídeos ya procesados")
-
-    keys = inventory["method"] + "|" + inventory["video_id"]
-    return inventory[~keys.isin(done)]
-
-
-def extract_faces(cfg, paths, inventory) -> None:
-    from src.data.face_extraction import build_mtcnn, extract_dataset
-    pending = _videos_pending_faces(inventory, paths)
-    if pending.empty:
-        print("Extracción facial: ya hecha para todos los vídeos.")
-        return
-    print(f"Extrayendo rostros de {len(pending)} vídeos pendientes...")
-    mtcnn = build_mtcnn(image_size=cfg["face_extraction"]["image_size"],
-                        margin=cfg["face_extraction"]["margin"])
-    extract_dataset(pending, mtcnn, paths["interim"],
-                    num_frames=cfg["face_extraction"]["frames_per_video"])
-
-
-def build_or_load_embeddings(cfg, paths, inventory):
-    from src.features.embeddings import build_embeddings
-    return build_embeddings(inventory, paths["interim"], paths["processed"],
-                            backbone=cfg["model"]["backbone"], overwrite=False)
 
 
 def train_models(cfg, paths, manifest, retrain: bool):
@@ -216,22 +173,87 @@ def make_figures(cfg, paths, inventory, manifest, baseline, hybrid, loaders, dev
     print("Figuras guardadas en", fig_dir)
 
 
+def run_experiments(cfg, paths, inv, manifest, hybrid, device,
+                    compare_backbone="resnet50", lc_sizes=None):
+    """Los 3 experimentos avanzados; cada uno guarda su CSV/figura y es robusto."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from src.experiments.comparisons import (
+        learning_curve, plot_learning_curve, compare_backbones, per_method_metrics)
+
+    fig_dir = paths["figures"]
+
+    # 1) Curva de aprendizaje: AUC vs nº de vídeos de entrenamiento
+    try:
+        print("\n-- Curva de aprendizaje (AUC vs nº de vídeos) --")
+        lc = learning_curve(manifest, cfg, device, sizes=lc_sizes)
+        lc.to_csv(fig_dir / "curva_aprendizaje.csv", index=False)
+        plot_learning_curve(lc, save_path=fig_dir / "curva_aprendizaje.png")
+        plt.close("all")
+    except Exception as e:
+        print("  [exp] curva de aprendizaje:", e)
+
+    # 2) Comparativa de backbones (EfficientNet vs ResNet)
+    if compare_backbone:
+        try:
+            print(f"\n-- Backbones: {cfg['model']['backbone']} vs {compare_backbone} --")
+            bt = compare_backbones(inv, paths["processed"], cfg, device,
+                                   backbones=[cfg["model"]["backbone"], compare_backbone])
+            print(bt)
+            bt.to_csv(fig_dir / "comparativa_backbones.csv")
+        except Exception as e:
+            print("  [exp] backbones:", e)
+
+    # 3) Métricas por método de manipulación (reutiliza el híbrido ya entrenado)
+    try:
+        print("\n-- Métricas por método de manipulación --")
+        pm = per_method_metrics(manifest, hybrid, cfg, device)
+        print(pm)
+        if not pm.empty:
+            pm.to_csv(fig_dir / "metricas_por_metodo.csv")
+            ax = pm["auc"].plot(kind="bar", color="#457b9d", figsize=(7, 4))
+            ax.set_title("AUC por método de manipulación"); ax.set_ylim(0, 1)
+            plt.xticks(rotation=20); plt.tight_layout()
+            plt.savefig(fig_dir / "auc_por_metodo.png", dpi=120)
+            plt.close("all")
+    except Exception as e:
+        print("  [exp] por método:", e)
+
+    print("\nResultados de experimentos guardados en", fig_dir)
+
+
 def run_pipeline(
     download: bool = False,
     n_videos: int = 150,
     ff_script: str = "download-FaceForensics.py",
     retrain: bool = False,
     make_figs: bool = True,
+    experiments: bool = True,
+    compare_backbone: str | None = "resnet50",
+    lc_sizes=None,
     launch: bool = True,
     share: bool = True,
-    fused: bool = True,
 ):
     """Ejecuta el proyecto completo y (opcionalmente) lanza la app.
+
+    Args:
+        download: descargar FF++ (requiere el script oficial en el repo).
+        n_videos: vídeos por categoría al descargar; None = todos.
+        retrain: reentrenar aunque existan checkpoints.
+        make_figs: generar las figuras básicas para la memoria.
+        experiments: ejecutar los 3 experimentos (curva de aprendizaje,
+            comparativa de backbones y métricas por método).
+        compare_backbone: segundo backbone a comparar ('resnet50'); None lo
+            omite y ahorra la pasada extra vídeo->embedding.
+        lc_sizes: tamaños de la curva de aprendizaje; None = automático.
+        launch/share: lanzar la app Gradio con enlace público.
 
     Returns:
         El objeto `demo` de Gradio si launch=True (con .share_url), si no None.
     """
     from src.data.dataset import enumerate_videos, load_official_splits, assign_splits
+    from src.features.embeddings import embed_videos_multi
 
     TOTAL = 7
     cfg, paths = _load_context()
@@ -254,36 +276,35 @@ def run_pipeline(
     print(f"{len(inv)} vídeos ({int((inv['label']==0).sum())} reales / "
           f"{int((inv['label']==1).sum())} fakes).")
 
-    if fused:
-        # Rápido en Drive: vídeo -> embedding en un paso, sin escribir frames.
-        _banner(3, TOTAL, "Extracción + embeddings FUSIONADOS (directo a .npy)")
-        from src.features.embeddings import embed_videos_direct
-        manifest = embed_videos_direct(
-            inv, paths["processed"], backbone=cfg["model"]["backbone"],
-            num_frames=cfg["face_extraction"]["frames_per_video"],
-            image_size=cfg["face_extraction"]["image_size"],
-            margin=cfg["face_extraction"]["margin"])
-        _banner(4, TOTAL, "Embeddings")
-        print("(fusionado con el paso 3: no se han escrito frames en disco)")
-    else:
-        # Dos pasos (recomendable solo en disco local, no en Drive).
-        _banner(3, TOTAL, "Extracción facial")
-        extract_faces(cfg, paths, inv)
-        _banner(4, TOTAL, "Embeddings (CNN congelada)")
-        manifest = build_or_load_embeddings(cfg, paths, inv)
-
+    extra = (compare_backbone,) if (experiments and compare_backbone) else ()
+    titulo = "Vídeo -> embeddings (fusionado" + (", MTCNN compartido para 2 backbones)" if extra else ")")
+    _banner(3, TOTAL, titulo)
+    manifests = embed_videos_multi(
+        inv, paths["processed"], backbone=cfg["model"]["backbone"],
+        extra_backbones=extra,
+        num_frames=cfg["face_extraction"]["frames_per_video"],
+        image_size=cfg["face_extraction"]["image_size"],
+        margin=cfg["face_extraction"]["margin"])
+    manifest = manifests[cfg["model"]["backbone"]]
     if manifest.empty:
         print("No se generaron embeddings (¿hay vídeos y se detectan rostros?).")
         return None
 
-    _banner(5, TOTAL, "Entrenamiento (baseline + híbrido)")
+    _banner(4, TOTAL, "Entrenamiento (baseline + híbrido)")
     baseline, hybrid, parts, loaders, device = train_models(cfg, paths, manifest, retrain)
 
-    _banner(6, TOTAL, "Figuras para la memoria")
+    _banner(5, TOTAL, "Evaluación y figuras para la memoria")
     if make_figs:
         make_figures(cfg, paths, inv, manifest, baseline, hybrid, loaders, device)
     else:
         print("(omitidas)")
+
+    _banner(6, TOTAL, "Experimentos avanzados")
+    if experiments:
+        run_experiments(cfg, paths, inv, manifest, hybrid, device,
+                        compare_backbone=compare_backbone, lc_sizes=lc_sizes)
+    else:
+        print("(omitidos: experiments=False)")
 
     _banner(7, TOTAL, "Lanzando la app VERIFAKE")
     if not launch:

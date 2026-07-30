@@ -27,8 +27,8 @@ data/processed/*
 *.pth
 *.h5
 *.ckpt
-/models/
-checkpoints/
+/models/         # solo la carpeta de modelos en la raíz (NO src/models/)
+/checkpoints/
 
 # --- Reproducibilidad: lock generado, no versionar el intermedio ---
 # (requirements-lock.txt SÍ se versiona para la entrega)

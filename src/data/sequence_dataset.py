@@ -30,6 +30,19 @@ def _import_torch():
 # Definición perezosa para no exigir torch al importar el módulo.
 torch, _Dataset = _import_torch()
 
+# Caché en RAM de embeddings (~80 KB por vídeo -> unos cientos de MB para todo
+# FF++). Tras la primera lectura, ninguna época ni ningún experimento (curva de
+# aprendizaje, comparativas) vuelve a tocar el disco: clave sobre Google Drive.
+_EMB_CACHE: Dict[str, np.ndarray] = {}
+
+
+def _load_embedding(path: str) -> np.ndarray:
+    emb = _EMB_CACHE.get(path)
+    if emb is None:
+        emb = np.load(path).astype("float32")
+        _EMB_CACHE[path] = emb
+    return emb
+
 
 class SequenceDataset(_Dataset):
     """Sirve (secuencia_embeddings, longitud, etiqueta) por vídeo."""
@@ -44,7 +57,7 @@ class SequenceDataset(_Dataset):
 
     def __getitem__(self, idx: int):
         row = self.df.iloc[idx]
-        emb = np.load(row["embedding_path"]).astype("float32")  # [n, D]
+        emb = _load_embedding(row["embedding_path"])            # [n, D] (cacheado)
         n = emb.shape[0]
 
         if n >= self.max_len:

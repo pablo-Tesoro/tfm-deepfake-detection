@@ -74,9 +74,15 @@ pip install -r requirements.txt
 python -c "from src.utils.seeds import set_seed, load_config; set_seed(); print(load_config())"
 ```
 
-En **Google Colab** (recomendado para descargar y ejecutar, con guardado en Drive),
-abre `notebooks/00_setup_colab.ipynb` y sigue los pasos: monta Drive, clona el repo,
-instala dependencias y deja datos/figuras/modelos en una carpeta persistente de Drive.
+En **Google Colab** (recomendado para descargar y ejecutar, con guardado en Drive):
+
+- **Todo de una vez:** abre `notebooks/RUN_ALL.ipynb`, edita `REPO_URL` y *Ejecutar
+  todo*. Encadena el pipeline completo (datos → vídeo→embeddings fusionados →
+  entrenamiento → evaluación → experimentos: curva de aprendizaje, EfficientNet vs
+  ResNet y métricas por método) y lanza la app con enlace público `*.gradio.live`.
+- **Paso a paso:** abre `notebooks/00_setup_colab.ipynb` y sigue los pasos; luego los
+  notebooks 01 (EDA), 02 (modelado), 03 (explicabilidad), 04 (app) y 05 (experimentos).
+
 No reinstales `torch`/`torchvision` (ya vienen).
 
 ### Rutas y workspace
@@ -104,8 +110,12 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 - [~] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
       Código y notebook listos (`src/features/`, `src/models/`, `src/training/`,
       `src/evaluation/`, `notebooks/02_modeling.ipynb`); pendiente de ejecutar con datos.
-- [x] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
-- [ ] **Fase 4** — Productivización: app Gradio end-to-end.
+- [~] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
+      Código y notebook listos (`src/explainability/`, `notebooks/03_explainability.ipynb`).
+- [~] **Fase 4** — Productivización: app Gradio end-to-end.
+      App lista (`app/app.py`, `notebooks/04_app.ipynb`): vídeo → veredicto + Grad-CAM + decisión KYC.
+- [~] **Experimentos avanzados** (`notebooks/05_experimentos.ipynb`, `src/experiments/`):
+      curva de aprendizaje (AUC vs nº de vídeos), EfficientNet vs ResNet, métricas por método.
 - [ ] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.
 
 ## Entregables del TFM
@@ -116,4 +126,4 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 
 ## Autor
 
-Pablo Tesoro García.
+Pablo Tesoro García

@@ -1,36 +1,43 @@
 # TFM — Detección de Deepfakes en Vídeo (perfil Data Scientist)
 
 > Detección de manipulaciones sintéticas (*deepfakes*) en secuencias de vídeo
-> mediante una arquitectura híbrida espacio-temporal (CNN + LSTM) y técnicas de
-> explicabilidad (Grad-CAM), con una herramienta web de demostración.
+> mediante una arquitectura híbrida espacio-temporal (CNN + LSTM), explicabilidad
+> (Grad-CAM) y una aplicación web de verificación forense.
 
-Máster en Big Data, Ciencia de Datos e Inteligencia Artificial — UCM.
+Máster en Ciencia de Datos e Inteligencia Artificial — UCM.
 
 ---
 
 ## Idea en una frase
 
 Un sistema que, dado un vídeo, predice si el rostro ha sido manipulado y **muestra
-visualmente por qué** lo cree, pensado para un caso de negocio concreto:
+visualmente por qué** lo cree, anclado en un caso de negocio concreto:
 la **videoidentificación en el *onboarding* bancario** (ver `docs/00_alcance_caso_negocio.md`).
 
-## Enfoque técnico (resumen)
+## Enfoque técnico
 
 El cuello de botella de este problema es el coste computacional del vídeo. La
-estrategia evita entrenar de extremo a extremo sobre vídeo crudo y desacopla el
-*pipeline* en etapas cacheables:
+estrategia evita entrenar de extremo a extremo sobre vídeo crudo y cachea los
+resultados intermedios caros:
 
-1. **Extracción facial** — se muestrean N frames por vídeo y se recorta el rostro
-   (MTCNN). Los recortes se guardan en `data/interim/`.
-2. **Embeddings espaciales** — una CNN preentrenada y *congelada* (EfficientNet)
-   convierte cada rostro en un vector. Se calculan **una sola vez** y se cachean
-   en `data/processed/`. → barato y rápido de iterar.
-3. **Modelado temporal** — una LSTM/GRU consume las secuencias de embeddings y
+1. **Vídeo → embeddings (fusionado)** — por cada vídeo se muestrean N fotogramas,
+   se aísla el rostro (MTCNN, detección **por lotes**) y una CNN preentrenada y
+   *congelada* (EfficientNet-B0) lo convierte en un vector. Todo ocurre **en
+   memoria**: solo se escribe un `.npy` por vídeo en `data/processed/`. Evita
+   decenas de miles de imágenes sueltas, que en Google Drive son el gran cuello
+   de botella.
+2. **Modelado temporal** — una LSTM/GRU consume las secuencias de embeddings y
    evalúa la coherencia temporal del clip (parpadeos, micromovimientos).
-4. **Comparativa** — *baseline* a nivel de frame vs. híbrido vs. AutoML, más un
+3. **Comparativa** — *baseline* a nivel de frame vs. híbrido vs. AutoML, más un
    experimento **cross-manipulation** (entrenar con 3 métodos, evaluar en el 4º).
-5. **Explicabilidad** — Grad-CAM genera mapas de calor sobre el rostro.
-6. **Productivización** — app en Gradio: subir vídeo → predicción + mapa de calor.
+4. **Experimentos avanzados** — curva de aprendizaje (AUC vs nº de vídeos),
+   EfficientNet-B0 vs ResNet-50, y métricas desglosadas por método de manipulación.
+5. **Explicabilidad** — Grad-CAM (qué regiones del rostro) + curva de probabilidad
+   por fotograma (en qué momentos del clip).
+6. **Negocio** — el umbral de decisión no maximiza el F1: minimiza el **coste
+   esperado**, penalizando más los falsos negativos (dejar pasar un deepfake).
+7. **Productivización** — **VERIFAKE**, app Gradio: vídeo → veredicto + confianza +
+   mapas de calor + decisión operativa (aprobar / revisar / rechazar).
 
 ## Estructura del repositorio
 
@@ -38,84 +45,132 @@ estrategia evita entrenar de extremo a extremo sobre vídeo crudo y desacopla el
 TFM_Deepfake_Detection/
 ├── README.md
 ├── requirements.txt          # dependencias (stack PyTorch)
-├── .gitignore                # excluye datos/modelos pesados
+├── .gitignore                # excluye datos y modelos pesados
+├── run_all.py                # ORQUESTADOR de extremo a extremo
 ├── config/
 │   └── config.yaml           # parámetros centrales (semillas, rutas, modelo)
 ├── data/                     # (vacío en git; los datos NO se versionan)
-│   ├── raw/                  # vídeos FF++ descargados (c23)
-│   ├── interim/              # rostros recortados por frame
-│   └── processed/            # embeddings cacheados
-├── notebooks/                # EDA, extracción, modelado, resultados
+│   ├── raw/                  # vídeos FF++ (c23) + splits oficiales
+│   ├── interim/              # rostros recortados (solo ruta clásica de 2 pasos)
+│   └── processed/            # embeddings .npy + manifiesto CSV
+│       └── resnet50/         # embeddings del backbone alternativo
+├── notebooks/
+│   ├── RUN_ALL.ipynb         # ▶ ejecutar TODO y lanzar la app (Colab/Kaggle)
+│   ├── 00_setup_colab.ipynb  # preparación paso a paso
+│   ├── 01_eda.ipynb          # análisis exploratorio
+│   ├── 02_modeling.ipynb     # modelización y evaluación
+│   ├── 03_explainability.ipynb  # Grad-CAM y explicabilidad temporal
+│   ├── 04_app.ipynb          # lanzar VERIFAKE
+│   └── 05_experimentos.ipynb # curva de aprendizaje, backbones, por método
 ├── src/
-│   ├── data/                 # descarga, extracción facial, muestreo
-│   ├── features/             # cálculo de embeddings
-│   ├── models/               # baseline e híbrido
-│   ├── evaluation/           # métricas y análisis de coste
-│   └── utils/                # semillas, config, device
-├── app/                      # interfaz Gradio (productivización)
+│   ├── data/                 # inventario FF++, muestreo, extracción facial, dataset
+│   ├── features/             # embeddings (pipeline fusionado multi-backbone)
+│   ├── models/               # baseline (media+MLP) e híbrido CNN+LSTM
+│   ├── training/             # bucle de entrenamiento + early stopping
+│   ├── evaluation/           # métricas técnicas y de coste de negocio
+│   ├── explainability/       # Grad-CAM
+│   ├── experiments/          # curva de aprendizaje, backbones, por método
+│   └── utils/                # semillas, config, rutas (local/Drive)
+├── app/
+│   └── app.py                # VERIFAKE (interfaz Gradio)
+├── tests/                    # pruebas de cada fase (datos sintéticos)
 ├── reports/
 │   ├── memoria/              # la memoria de 20 caras
-│   └── figures/              # gráficas generadas
+│   └── figures/              # figuras y tablas CSV generadas
 └── docs/
-    └── 00_alcance_caso_negocio.md   # alcance y caso de negocio (Fase 0)
+    ├── 00_alcance_caso_negocio.md   # alcance y caso de negocio
+    └── 01_descarga_datos.md         # cómo descargar FaceForensics++
 ```
 
-## Puesta en marcha
+## Ejecución
+
+### Todo de una vez (recomendado)
+
+Abre `notebooks/RUN_ALL.ipynb` en **Colab** (o Kaggle), activa la GPU, edita
+`REPO_URL` y ejecuta todo. Encadena: splits → (descarga opcional) →
+vídeo→embeddings → entrenamiento → evaluación → experimentos → app con enlace
+público `*.gradio.live`.
+
+```python
+from run_all import run_pipeline
+
+demo = run_pipeline(
+    download=False,               # True para descargar FF++ (script oficial en el repo)
+    n_videos=150,                 # None = todos los vídeos
+    retrain=True,                 # reentrenar (False reutiliza los checkpoints)
+    make_figs=True,               # figuras básicas para la memoria
+    experiments=True,             # curva de aprendizaje + backbones + por método
+    compare_backbone="resnet50",  # None omite la comparativa (ahorra una pasada)
+    share=True,                   # enlace público de la app
+)
+```
+
+**Todo es idempotente:** los embeddings ya calculados, los modelos entrenados y los
+vídeos descargados no se repiten. Si la sesión se corta, relanza y retoma.
+
+### Paso a paso
+
+`00_setup_colab.ipynb` para preparar el entorno, y después los notebooks 01 (EDA),
+02 (modelado), 03 (explicabilidad), 04 (app) y 05 (experimentos).
+
+### En local
 
 ```bash
-# 1. Entorno virtual
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-# 2. Dependencias
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 3. Comprobar configuración y semillas
 python -c "from src.utils.seeds import set_seed, load_config; set_seed(); print(load_config())"
+python run_all.py
 ```
 
-En **Google Colab** (recomendado para descargar y ejecutar, con guardado en Drive):
+En Colab/Kaggle **no reinstales** `torch`/`torchvision` (ya vienen).
 
-- **Todo de una vez:** abre `notebooks/RUN_ALL.ipynb`, edita `REPO_URL` y *Ejecutar
-  todo*. Encadena el pipeline completo (datos → vídeo→embeddings fusionados →
-  entrenamiento → evaluación → experimentos: curva de aprendizaje, EfficientNet vs
-  ResNet y métricas por método) y lanza la app con enlace público `*.gradio.live`.
-- **Paso a paso:** abre `notebooks/00_setup_colab.ipynb` y sigue los pasos; luego los
-  notebooks 01 (EDA), 02 (modelado), 03 (explicabilidad), 04 (app) y 05 (experimentos).
+### Pruebas
 
-No reinstales `torch`/`torchvision` (ya vienen).
+```bash
+for t in tests/test_*.py; do python "$t"; done
+```
 
-### Rutas y workspace
+## Rutas y workspace
 
-Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
+Las salidas (datos, figuras, modelos) se resuelven en `src/utils/paths.py`:
 
 - **Local:** `workspace_root: null` en `config.yaml` → todo vive en el proyecto.
-- **Colab:** la variable de entorno `TFM_WORKSPACE` (la fija el notebook de setup)
-  redirige todo a Google Drive. El código no cambia entre ambos entornos.
+- **Colab:** `TFM_WORKSPACE` (lo fija el notebook) apunta a Google Drive.
+- **Kaggle:** trabaja en `/kaggle/working` y sincroniza con Drive vía rclone.
+
+El código no cambia entre entornos.
 
 ## Datos
 
-- **Dataset:** FaceForensics++ (compresión c23).
-- **Acceso oficial:** https://github.com/ondyari/FaceForensics — requiere rellenar
-  un formulario de Google; una vez aceptado, envían el script de descarga.
+- **Dataset:** FaceForensics++ (compresión c23): 1000 vídeos reales y 4000
+  manipulados con 4 métodos (Deepfakes, Face2Face, FaceSwap, NeuralTextures).
+- **Acceso oficial:** https://github.com/ondyari/FaceForensics — formulario de
+  Google; una vez aceptado, envían el script de descarga (ver `docs/01_descarga_datos.md`).
 - **Licencia:** uso de investigación/académico. **No redistribuir** los vídeos.
   Es obligatorio **citar** a Rössler et al. (2019) en la bibliografía.
 
-## Hoja de ruta por fases
+## Resultados generados
+
+En `reports/figures/` (los produce `run_all.py`):
+
+| Archivo | Contenido |
+|---|---|
+| `01_distribucion_clases.png` | Reparto Real / Fake del dataset |
+| `tabla_comparativa.csv` | Baseline vs Híbrido CNN+LSTM en test |
+| `matriz_confusion.png` | Matriz de confusión del híbrido |
+| `curva_aprendizaje.png/.csv` | AUC y F1 según el nº de vídeos de entrenamiento |
+| `comparativa_backbones.csv` | EfficientNet-B0 vs ResNet-50 |
+| `metricas_por_metodo.csv`, `auc_por_metodo.png` | Rendimiento por manipulación |
+
+## Estado del proyecto
 
 - [x] **Fase 0** — Preparación: repo, entorno, alcance y caso de negocio.
-- [~] **Fase 1** — Datos y EDA: descarga, extracción facial, análisis descriptivo.
-      Código listo (`src/data/`, `notebooks/01_eda.ipynb`); pendiente de ejecutar
-      sobre los datos al recibir el acceso a FF++.
-- [~] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
-      Código y notebook listos (`src/features/`, `src/models/`, `src/training/`,
-      `src/evaluation/`, `notebooks/02_modeling.ipynb`); pendiente de ejecutar con datos.
-- [~] **Fase 3** — Explicabilidad y negocio: Grad-CAM, métricas de coste, umbral.
-      Código y notebook listos (`src/explainability/`, `notebooks/03_explainability.ipynb`).
-- [~] **Fase 4** — Productivización: app Gradio end-to-end.
-      App lista (`app/app.py`, `notebooks/04_app.ipynb`): vídeo → veredicto + Grad-CAM + decisión KYC.
-- [~] **Experimentos avanzados** (`notebooks/05_experimentos.ipynb`, `src/experiments/`):
-      curva de aprendizaje (AUC vs nº de vídeos), EfficientNet vs ResNet, métricas por método.
+- [x] **Fase 1** — Datos y EDA: descarga, inventario, extracción facial, EDA.
+- [x] **Fase 2** — Modelización: embeddings, baseline, híbrido, cross-manipulation.
+- [x] **Fase 3** — Explicabilidad: Grad-CAM, curva temporal, umbral por coste.
+- [x] **Fase 4** — Productivización: app VERIFAKE con enlace público.
+- [x] **Experimentos avanzados** — curva de aprendizaje, backbones, por método.
+- [x] **Orquestación** — `run_all.py` + `RUN_ALL.ipynb` (Colab y Kaggle).
 - [ ] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.
 
 ## Entregables del TFM
@@ -124,6 +179,16 @@ Las salidas (datos, figuras, modelos) se resuelven con `src/utils/paths.py`:
 2. **Vídeo** MP4 de máx. 5 min (< 50 MB), con voz en off descriptiva.
 3. **Anexos**: código (este repo) y estudios detallados de EDA/modelos.
 
+## Reproducibilidad
+
+Semilla global fija (42) en `config.yaml`, aplicada a `random`, `numpy` y PyTorch.
+Antes de la entrega, congela las versiones exactas:
+
+```bash
+pip freeze > requirements-lock.txt
+```
+
 ## Autor
 
-Pablo Tesoro García
+[Tu Nombre y dos apellidos] — el ZIP de entrega se nombrará
+`Nombre_Apellido1_Apellido2_TFM_Deepfakes.zip` (formato pedido por la guía).

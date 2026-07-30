@@ -1,9 +1,8 @@
 # Alcance y Caso de Negocio — TFM Detección de Deepfakes
 
-> Documento de Fase 0. Define **qué** se va a hacer, **para quién** y **por qué
-> importa**. Es la brújula del proyecto: toda decisión técnica posterior debe
-> poder justificarse contra este documento. Revísalo y personaliza lo marcado
-> con `[...]`.
+> Documento rector del proyecto: define **qué** se hace, **para quién** y **por qué
+> importa**. Toda decisión técnica posterior se justifica contra este documento.
+> Es también la base de las secciones de contexto y objetivos de la memoria.
 
 ---
 
@@ -40,7 +39,7 @@ estimar si el rostro ha sido manipulado sintéticamente (suplantación de identi
 > Alternativas consideradas (mencionar brevemente en la memoria, sección de
 > contexto): moderación de contenido en redes sociales, verificación periodística
 > de vídeos, peritaje en seguros. Se elige banca por la claridad del coste y la
-> relevancia regulatoria. `[Confirma si prefieres otro caso ancla.]`
+> relevancia regulatoria.
 
 ## 3. Objetivos
 
@@ -51,15 +50,20 @@ técnico.
 
 **Objetivos específicos.**
 
-1. Construir un *pipeline* reproducible de tratamiento de vídeo masivo (extracción
-   facial y muestreo de frames) viable con recursos limitados.
+1. Construir un *pipeline* reproducible de tratamiento de vídeo masivo (muestreo de
+   fotogramas, aislamiento del rostro y extracción de características) viable con
+   recursos limitados.
 2. Comparar varias técnicas de modelización (baseline a nivel de frame, híbrido
    CNN+LSTM y un AutoML de referencia), justificando bondades y debilidades.
 3. Evaluar la **generalización** del modelo a un método de manipulación no visto
    durante el entrenamiento (experimento *cross-manipulation*).
-4. Traducir los resultados a métricas de negocio (coste de FP/FN, umbral operativo)
-   e interpretarlos con mapas de calor (Grad-CAM).
-5. Productivizar la solución en una app interactiva (Gradio).
+4. Analizar el comportamiento del sistema mediante tres estudios adicionales:
+   **curva de aprendizaje** (rendimiento según el volumen de datos), **comparativa
+   de *backbones*** (EfficientNet-B0 vs ResNet-50) y **desglose por método** de
+   manipulación.
+5. Traducir los resultados a métricas de negocio (coste de FP/FN, umbral operativo)
+   e interpretarlos con mapas de calor (Grad-CAM) y evolución temporal.
+6. Productivizar la solución en una app interactiva (VERIFAKE, sobre Gradio).
 
 ## 4. Alcance (qué entra y qué NO)
 
@@ -110,10 +114,13 @@ se analiza y discute por qué (también es un resultado válido y honesto).
 
 | Riesgo | Mitigación |
 |---|---|
-| Coste computacional del vídeo | Pipeline en 2 etapas + embeddings cacheados + subconjunto + c23 |
-| Latencia de acceso al dataset | Solicitar el formulario **hoy**; avanzar el scaffold mientras llega |
+| Coste computacional del vídeo | Pipeline fusionado vídeo→embedding, embeddings cacheados y compresión c23 |
+| Lentitud de Google Drive con muchos ficheros | No se escriben fotogramas sueltos: un `.npy` por vídeo; escaneo único de directorios; caché en RAM al entrenar |
+| Latencia de acceso al dataset | Solicitud del formulario al inicio; desarrollo del scaffold en paralelo |
 | Sobreajuste al método de generación | Experimento cross-manipulation explícito |
-| Desbalance de clases | Análisis en el EDA y técnicas de balanceo / pesos en la pérdida |
+| Sobreajuste por dataset pequeño | Curva de aprendizaje para dimensionar el volumen necesario |
+| Desbalance de clases | Análisis en el EDA y ponderación de la pérdida (`pos_weight`) |
+| Sesiones de Colab interrumpidas | Todo el pipeline es idempotente: al relanzar, retoma donde iba |
 | Memoria demasiado técnica para "Negocio" | Detalle técnico a anexos; memoria visual y orientada a decisión |
 
 ## 8. Entregables
@@ -124,10 +131,15 @@ se analiza y discute por qué (también es un resultado válido y honesto).
 
 ---
 
-### Checklist de cierre de Fase 0
+### Estado del proyecto
 
-- [ ] Solicitud de acceso a FaceForensics++ enviada (formulario de Google).
-- [ ] Repositorio creado (GitHub/Drive) con permisos para Carlos Ortega y Santiago Mota.
-- [ ] Caso de negocio ancla confirmado y personalizado.
-- [ ] Entorno reproducible verificado (`set_seed` + `load_config` funcionan).
-- [ ] Decisión de framework confirmada (por defecto: PyTorch).
+- [x] Acceso a FaceForensics++ obtenido y dataset descargado (c23).
+- [x] Repositorio creado con permisos para Carlos Ortega y Santiago Mota.
+- [x] Caso de negocio ancla confirmado (videoidentificación bancaria).
+- [x] Entorno reproducible verificado (semilla fija, config centralizada).
+- [x] Framework confirmado: PyTorch.
+- [x] Pipeline completo ejecutado de extremo a extremo (datos → modelo →
+      explicabilidad → app), incluidos los experimentos avanzados.
+- [ ] Memoria de 20 caras redactada.
+- [ ] Vídeo de presentación (5 min, MP4, < 50 MB) grabado.
+- [ ] Anexos montados y `requirements-lock.txt` congelado.

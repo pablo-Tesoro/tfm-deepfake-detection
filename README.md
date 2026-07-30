@@ -4,7 +4,7 @@
 > mediante una arquitectura híbrida espacio-temporal (CNN + LSTM), explicabilidad
 > (Grad-CAM) y una aplicación web de verificación forense.
 
-Máster en Ciencia de Datos e Inteligencia Artificial — UCM.
+Máster en Big Data, Ciencia de Datos e Inteligencia Artificial — UCM.
 
 ---
 
@@ -78,8 +78,11 @@ TFM_Deepfake_Detection/
 │   ├── memoria/              # la memoria de 20 caras
 │   └── figures/              # figuras y tablas CSV generadas
 └── docs/
-    ├── 00_alcance_caso_negocio.md   # alcance y caso de negocio
-    └── 01_descarga_datos.md         # cómo descargar FaceForensics++
+    ├── 00_alcance_caso_negocio.md   # alcance, caso de negocio y objetivos
+    ├── 01_descarga_datos.md         # cómo descargar FaceForensics++
+    ├── 02_arquitectura.md           # arquitectura, base teórica y decisiones
+    ├── 03_etica_privacidad.md       # licencia, privacidad y uso dual
+    └── 04_guia_memoria.md           # mapa guía UCM → memoria → figuras
 ```
 
 ## Ejecución
@@ -162,6 +165,16 @@ En `reports/figures/` (los produce `run_all.py`):
 | `comparativa_backbones.csv` | EfficientNet-B0 vs ResNet-50 |
 | `metricas_por_metodo.csv`, `auc_por_metodo.png` | Rendimiento por manipulación |
 
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| `docs/00_alcance_caso_negocio.md` | Problema, caso de negocio ancla, objetivos, alcance y riesgos |
+| `docs/01_descarga_datos.md` | Obtención y descarga de FaceForensics++ |
+| `docs/02_arquitectura.md` | Pipeline, base teórica (CNN, LSTM, Grad-CAM), decisiones de diseño y optimizaciones |
+| `docs/03_etica_privacidad.md` | Licencia del dataset, privacidad, uso dual y limitaciones |
+| `docs/04_guia_memoria.md` | Mapa entre los requisitos de la guía UCM, las secciones de la memoria y las figuras |
+
 ## Estado del proyecto
 
 - [x] **Fase 0** — Preparación: repo, entorno, alcance y caso de negocio.
@@ -190,5 +203,4 @@ pip freeze > requirements-lock.txt
 
 ## Autor
 
-[Tu Nombre y dos apellidos] — el ZIP de entrega se nombrará
-`Nombre_Apellido1_Apellido2_TFM_Deepfakes.zip` (formato pedido por la guía).
+Pablo Tesoro García

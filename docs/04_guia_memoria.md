@@ -80,12 +80,12 @@ Regla útil: si un párrafo no se entiende sin saber qué es un tensor, va al an
 
 ## 6. Checklist final de entrega
 
-- [ ] ¿La memoria ocupa como máximo 20 caras (sin portada, índice ni anexos)?
-- [ ] ¿Están revisados los derechos de uso de los datos?
-- [ ] ¿El código está accesible por enlace, con permisos para Carlos Ortega y
+- [x] ¿La memoria ocupa como máximo 20 caras (sin portada, índice ni anexos)?
+- [x] ¿Están revisados los derechos de uso de los datos?
+- [x] ¿El código está accesible por enlace, con permisos para Carlos Ortega y
       Santiago Mota?
-- [ ] ¿El proyecto es reproducible (`requirements-lock.txt`, semillas)?
-- [ ] ¿Hay sección de conclusiones y de mejoras futuras?
-- [ ] ¿El vídeo dura menos de 5 minutos y describe el proyecto?
-- [ ] ¿Hay bibliografía breve (≈ media cara)?
-- [ ] ¿El fichero se nombra `Nombre_Apellido1_Apellido2_...`?
+- [x] ¿El proyecto es reproducible (`requirements-lock.txt`, semillas)?
+- [x] ¿Hay sección de conclusiones y de mejoras futuras?
+- [x] ¿El vídeo dura menos de 5 minutos y describe el proyecto?
+- [x] ¿Hay bibliografía breve (≈ media cara)?
+- [x] ¿El fichero se nombra `Nombre_Apellido1_Apellido2_...`?

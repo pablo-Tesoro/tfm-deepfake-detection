@@ -140,6 +140,6 @@ se analiza y discute por qué (también es un resultado válido y honesto).
 - [x] Framework confirmado: PyTorch.
 - [x] Pipeline completo ejecutado de extremo a extremo (datos → modelo →
       explicabilidad → app), incluidos los experimentos avanzados.
-- [ ] Memoria de 20 caras redactada.
-- [ ] Vídeo de presentación (5 min, MP4, < 50 MB) grabado.
-- [ ] Anexos montados y `requirements-lock.txt` congelado.
+- [x] Memoria de 20 caras redactada.
+- [x] Vídeo de presentación (5 min, MP4, < 50 MB) grabado.
+- [x] Anexos montados y `requirements-lock.txt` congelado.

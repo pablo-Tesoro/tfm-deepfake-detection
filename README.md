@@ -184,7 +184,7 @@ En `reports/figures/` (los produce `run_all.py`):
 - [x] **Fase 4** — Productivización: app VERIFAKE con enlace público.
 - [x] **Experimentos avanzados** — curva de aprendizaje, backbones, por método.
 - [x] **Orquestación** — `run_all.py` + `RUN_ALL.ipynb` (Colab y Kaggle).
-- [ ] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.
+- [x] **Fase 5** — Memoria (20 caras), anexos, vídeo (5 min) y checklist final.
 
 ## Entregables del TFM
 
